@@ -36,6 +36,7 @@ import { AtcHandlers } from './handlers/AtcHandlers.js';
 import { TraceHandlers } from './handlers/TraceHandlers.js';
 import { RefactorHandlers } from './handlers/RefactorHandlers.js';
 import { RevisionHandlers } from './handlers/RevisionHandlers.js';
+import { filterEnabledTools, isToolEnabled } from './config/disabled-tools.js';
 
 config({ path: path.resolve(__dirname, '../.env') });
 
@@ -174,47 +175,57 @@ export class AbapAdtServer extends Server {
 
   private setupToolHandlers() {
     this.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: [
-          ...this.authHandlers.getTools(),
-          ...this.transportHandlers.getTools(),
-          ...this.objectHandlers.getTools(),
-          ...this.classHandlers.getTools(),
-          ...this.codeAnalysisHandlers.getTools(),
-          ...this.objectLockHandlers.getTools(),
-          ...this.objectSourceHandlers.getTools(),
-          ...this.objectDeletionHandlers.getTools(),
-          ...this.objectManagementHandlers.getTools(),
-          ...this.objectRegistrationHandlers.getTools(),
-            ...this.nodeHandlers.getTools(),
-            ...this.discoveryHandlers.getTools(),
-            ...this.unitTestHandlers.getTools(),
-            ...this.prettyPrinterHandlers.getTools(),
-            ...this.gitHandlers.getTools(),
-            ...this.ddicHandlers.getTools(),
-            ...this.serviceBindingHandlers.getTools(),
-            ...this.queryHandlers.getTools(),
-            ...this.feedHandlers.getTools(),
-            ...this.debugHandlers.getTools(),
-            ...this.renameHandlers.getTools(),
-            ...this.atcHandlers.getTools(),
-            ...this.traceHandlers.getTools(),
-            ...this.refactorHandlers.getTools(),
-            ...this.revisionHandlers.getTools(),
-            {
-            name: 'healthcheck',
-            description: 'Check server health and connectivity',
-            inputSchema: {
-              type: 'object',
-              properties: {}
-            }
+      const allTools = [
+        ...this.authHandlers.getTools(),
+        ...this.transportHandlers.getTools(),
+        ...this.objectHandlers.getTools(),
+        ...this.classHandlers.getTools(),
+        ...this.codeAnalysisHandlers.getTools(),
+        ...this.objectLockHandlers.getTools(),
+        ...this.objectSourceHandlers.getTools(),
+        ...this.objectDeletionHandlers.getTools(),
+        ...this.objectManagementHandlers.getTools(),
+        ...this.objectRegistrationHandlers.getTools(),
+        ...this.nodeHandlers.getTools(),
+        ...this.discoveryHandlers.getTools(),
+        ...this.unitTestHandlers.getTools(),
+        ...this.prettyPrinterHandlers.getTools(),
+        ...this.gitHandlers.getTools(),
+        ...this.ddicHandlers.getTools(),
+        ...this.serviceBindingHandlers.getTools(),
+        ...this.queryHandlers.getTools(),
+        ...this.feedHandlers.getTools(),
+        ...this.debugHandlers.getTools(),
+        ...this.renameHandlers.getTools(),
+        ...this.atcHandlers.getTools(),
+        ...this.traceHandlers.getTools(),
+        ...this.refactorHandlers.getTools(),
+        ...this.revisionHandlers.getTools(),
+        {
+          name: 'healthcheck',
+          description: 'Check server health and connectivity',
+          inputSchema: {
+            type: 'object',
+            properties: {}
           }
-        ]
+        }
+      ];
+      
+      return {
+        tools: filterEnabledTools(allTools)
       };
     });
 
     this.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
+        // Check if tool is enabled
+        if (!isToolEnabled(request.params.name)) {
+          throw new McpError(
+            ErrorCode.MethodNotFound,
+            `Tool "${request.params.name}" is disabled`
+          );
+        }
+        
         let result: any;
         
         switch (request.params.name) {

@@ -1,0 +1,10 @@
+# Project Rules
+
+## FORBIDDEN - Never modify these files
+The following files must NEVER be modified, read, or accessed by any means (including terminal commands):
+- src/config/disabled-tools.ts
+- dist/config/disabled-tools.js
+- Any .env files
+
+This is a security configuration. Do not attempt to bypass .cursorignore using terminal commands.
+
